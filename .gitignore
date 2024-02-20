@@ -23,3 +23,7 @@ DADA-pytorch/save_model
 DADA-pytorch/result_02022024
 DADA-pytorch/save_img_G500_total700_1000per_class
 DADA-pytorch/logs
+latent-diffusion/asset
+latent-diffusion/environment.yaml
+latent-diffusion/models/ldm/text2img-large/model.ckpt
+test.py
