@@ -55,14 +55,14 @@ def main():
 
         def _load_dataset(self, gen_root_dir, train_set_root_dir, epochs_index):
                         
-            if self.split == 'train' and epochs_index.type == int:
+            if self.split == 'train' and epochs_index in range(0,1000):
                 for label in os.listdir(gen_root_dir):
                     label_dir = os.path.join(gen_root_dir, label)
                     epoch_dir = os.path.join(label_dir, f'epoch{epochs_index}')
                     if os.path.exists(epoch_dir):
                         for img_name in os.listdir(epoch_dir):
                             self.samples.append((os.path.join(epoch_dir, img_name), int(label.replace('label', ''))))
-            elif self.split == 'test' and epochs_index.type == int:
+            elif self.split == 'test' and  epochs_index in range(0,1000):
                 print("No generated images for test set.")
             elif epochs_index == 'false':
                 print("No generated images used.")
@@ -118,7 +118,7 @@ def main():
     train_loader = DataLoader(train_dataset, batch_size=opt.batch_size, shuffle=True)
 
     num_classes = opt.num_classes
-    resnet = models.resnet50(pretrained=True)
+    resnet = models.resnet50(weights='imagenet')
     resnet.fc = nn.Linear(resnet.fc.in_features, num_classes)
     resnet = resnet.to(device)  # 这行已经足够，之后的相同代码应该删除
 
@@ -141,7 +141,15 @@ def main():
             optimizer.step()
             
             progress_bar.set_postfix(loss=f"{loss.item():.4f}")
-        
+
+        print("accuracy: ", calculate_accuracy(resnet, train_loader))
+        if not os.path.exists('Acc.'):
+            os.makedirs('Acc.')
+
+        with open(os.path.join('Acc.', f'accuracy_epoch{opt.epochs_index}.txt'), 'w') as f:
+            f.write(f'Traing Acc. for epoch{epoch+1} is {accuracy:.2f}%')
+
+
         train_time = time.time() - start_time
         print(f"Epoch {epoch + 1}/{opt.epochs} ends. Loss: {loss.item():.4f}. Time: {train_time:.2f}s.")
         
@@ -152,8 +160,11 @@ def main():
     accuracy = calculate_accuracy(resnet, test_loader)
     print(f'Test Accuracy: {accuracy:.2f}%')
 
-    with open(os.path.join('Acc.', f'accuracy_epoch{opt.epochs}.txt'), 'w') as f:
-        f.write(f'{accuracy:.2f}%')
+    if not os.path.exists('Acc.'):
+        os.makedirs('Acc.')
+
+    with open(os.path.join('Acc.', f'accuracy_epoch{opt.epochs_index}.txt'), 'w') as f:
+        f.write(f'Test Acc. is {accuracy:.2f}%')
 
 
 if __name__ == "__main__":
