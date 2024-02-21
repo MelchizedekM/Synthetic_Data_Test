@@ -9,4 +9,4 @@ class opt:
     num_classes = 10
     epochs = 10
     classify_index = 1
-    split_ratio = 0.8
+    split_ratio = 0.1

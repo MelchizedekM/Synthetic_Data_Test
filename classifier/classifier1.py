@@ -4,13 +4,14 @@ import torch.nn as nn
 import torch.optim as optim
 import os
 import random
+import time
 
 from setting import opt
 from torchvision import transforms, models
 from torchvision.datasets import ImageFolder
 from torch.utils.data import DataLoader, Dataset
 from PIL import Image
-
+from tqdm import tqdm
 
 def main():
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -53,17 +54,21 @@ def main():
             self._load_dataset(gen_root_dir, train_set_root_dir, epochs_index)
 
         def _load_dataset(self, gen_root_dir, train_set_root_dir, epochs_index):
-            
-            print(f"Loading dataset from {gen_root_dir} and {train_set_root_dir} as {self.split}.")
-            
-            if self.split == 'train':
+                        
+            if self.split == 'train' and epochs_index.type == int:
                 for label in os.listdir(gen_root_dir):
                     label_dir = os.path.join(gen_root_dir, label)
                     epoch_dir = os.path.join(label_dir, f'epoch{epochs_index}')
                     if os.path.exists(epoch_dir):
                         for img_name in os.listdir(epoch_dir):
                             self.samples.append((os.path.join(epoch_dir, img_name), int(label.replace('label', ''))))
-                
+            elif self.split == 'test' and epochs_index.type == int:
+                print("No generated images for test set.")
+            elif epochs_index == 'false':
+                print("No generated images used.")
+            else:
+                print("Invalid epochs_index type.")
+
             temp_samples = []
             for label in os.listdir(train_set_root_dir):
                 train_label_dir = os.path.join(train_set_root_dir, label)
@@ -121,10 +126,12 @@ def main():
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(resnet.parameters(), lr=0.001, momentum=0.9)
 
-    for epoch in range(opt.epochs): 
-
+    for epoch in range(opt.epochs):
         print(f"Epoch {epoch + 1}/{opt.epochs} begins.")
-        for inputs, labels in train_loader:
+        start_time = time.time()
+        
+        progress_bar = tqdm(train_loader, desc=f"Epoch {epoch + 1}/{opt.epochs}", leave=True, ncols=100)
+        for inputs, labels in progress_bar:
             inputs = inputs.to(device)
             labels = labels.to(device)
             optimizer.zero_grad()
@@ -132,16 +139,21 @@ def main():
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
-
-        print(f"Epoch {epoch + 1}/{opt.epochs} ends. Loss: {loss.item():.4f}")
-
-
+            
+            progress_bar.set_postfix(loss=f"{loss.item():.4f}")
+        
+        train_time = time.time() - start_time
+        print(f"Epoch {epoch + 1}/{opt.epochs} ends. Loss: {loss.item():.4f}. Time: {train_time:.2f}s.")
+        
+        progress_bar.close()
 
     test_loader = DataLoader(test_dataset, batch_size=opt.batch_size, shuffle=False)
 
     accuracy = calculate_accuracy(resnet, test_loader)
     print(f'Test Accuracy: {accuracy:.2f}%')
 
+    with open(os.path.join('Acc.', f'accuracy_epoch{opt.epochs}.txt'), 'w') as f:
+        f.write(f'{accuracy:.2f}%')
 
 
 if __name__ == "__main__":
