@@ -5,6 +5,8 @@ import torch.optim as optim
 import os
 import random
 import time
+import numpy as np
+from torch.utils.data import Subset
 
 from setting import opt
 from torchvision import transforms, models
@@ -116,11 +118,12 @@ def main():
                                 split_ratio=opt.split_ratio)
 
     train_loader = DataLoader(train_dataset, batch_size=opt.batch_size, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=opt.batch_size, shuffle=False)
 
     num_classes = opt.num_classes
-    resnet = models.resnet50(weights='imagenet')
+    resnet = models.resnet50()
     resnet.fc = nn.Linear(resnet.fc.in_features, num_classes)
-    resnet = resnet.to(device)  # 这行已经足够，之后的相同代码应该删除
+    resnet = resnet.to(device) 
 
 
     criterion = nn.CrossEntropyLoss()
@@ -142,30 +145,33 @@ def main():
             
             progress_bar.set_postfix(loss=f"{loss.item():.4f}")
 
-        print("accuracy: ", calculate_accuracy(resnet, train_loader))
-        if not os.path.exists('Acc.'):
-            os.makedirs('Acc.')
-
-        with open(os.path.join('Acc.', f'accuracy_epoch{opt.epochs_index}.txt'), 'w') as f:
-            f.write(f'Traing Acc. for epoch{epoch+1} is {accuracy:.2f}%')
-
-
         train_time = time.time() - start_time
         print(f"Epoch {epoch + 1}/{opt.epochs} ends. Loss: {loss.item():.4f}. Time: {train_time:.2f}s.")
+
+        # select 1000 images from the test set to calculate accuracy
+
+        indices = np.random.choice(range(len(test_dataset)), size=1000, replace=False)
+        subset = Subset(test_dataset, indices)
+        test_loader_1000 = DataLoader(subset, batch_size=opt.batch_size, shuffle=False)
+
+        accuracy = calculate_accuracy(resnet, test_loader_1000)
+
+        print("Training accuracy: ", calculate_accuracy(resnet, train_loader), "%")
+        print("Test accuracy: ", accuracy, "%")
+
+        if not os.path.exists(f'Acc._{opt.classify_index}'):
+            os.makedirs(f'Acc._{opt.classify_index}')
+
+        if epoch == 0:
+            with open(os.path.join(f'Acc._{opt.classify_index}', f'accuracy_epoch{opt.epochs_index}_train{opt.split_ratio}.txt'), 'w') as f:
+                f.write(f'Traing Acc. for epoch{epoch+1} is {calculate_accuracy(resnet, train_loader):.2f}%'+ '\n')
+                f.write(f'Test Acc. for epoch{epoch+1} is {accuracy:.2f}%'+ '\n')
+
+        with open(os.path.join(f'Acc._{opt.classify_index}', f'accuracy_epoch{opt.epochs_index}_train{opt.split_ratio}.txt'), 'a') as f:
+            f.write(f'Traing Acc. for epoch{epoch+1} is {calculate_accuracy(resnet, train_loader):.2f}%'+ '\n')
+            f.write(f'Test Acc. for epoch{epoch+1} is {accuracy:.2f}%'+ '\n')
         
         progress_bar.close()
-
-    test_loader = DataLoader(test_dataset, batch_size=opt.batch_size, shuffle=False)
-
-    accuracy = calculate_accuracy(resnet, test_loader)
-    print(f'Test Accuracy: {accuracy:.2f}%')
-
-    if not os.path.exists('Acc.'):
-        os.makedirs('Acc.')
-
-    with open(os.path.join('Acc.', f'accuracy_epoch{opt.epochs_index}.txt'), 'w') as f:
-        f.write(f'Test Acc. is {accuracy:.2f}%')
-
 
 if __name__ == "__main__":
     main()
