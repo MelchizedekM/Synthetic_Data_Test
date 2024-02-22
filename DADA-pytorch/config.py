@@ -20,7 +20,7 @@ class Config(object):
     num_classes = 10
     logs = os.path.join(base_dir, 'logs', str(count) + " per_class")
     save_model = os.path.join(base_dir, 'save_model', str(count) + " per_class")
-    gen_epoch = 200
-    n_times = 20  # 定义每个类别要生成图像的次数
+    gen_epoch = 300
+    n_times = 128  # 定义每个类别要生成图像的次数
     save_img_G = False
     save_epoch = 50

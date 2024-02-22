@@ -17,6 +17,8 @@ DADA-pytorch/gen_png_150
 DADA-pytorch/gen_png_161
 DADA-pytorch/gen_png_181
 DADA-pytorch/gen_png_200
+DADA-pytorch/train_set
+DADA-pytorch/gen_images
 DADA-pytorch/img 
 DADA-pytorch/log
 DADA-pytorch/save_model

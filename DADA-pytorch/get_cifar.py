@@ -53,7 +53,7 @@ def save_cifar10_numpy(data_dir):
     all_labels = np.append(all_labels, test_labels, axis=0)
     
     # Save images and labels to .npy files
-    save_path = os.path.join(opt.base_dir, 'gen_png')
+    save_path = os.path.join(opt.base_dir, 'train_set')
     if not os.path.exists(save_path):
         os.makedirs(save_path)
     np.save(os.path.join(save_path, 'all_images_cf.npy'), all_images)

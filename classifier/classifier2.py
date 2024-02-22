@@ -46,55 +46,73 @@ def main():
         _, predicted = torch.max(outputs, 1)
         return predicted.item()
 
-
     class CustomDataset(Dataset):
-        def __init__(self, gen_root_dir, train_set_root_dir, transform=None, epochs_index=0, split='train', split_ratio=opt.split_ratio):
+        def __init__(self, gen_root_dir, train_set_root_dir, transform=None, split='train', split_ratio=0.8, epochs_index=0):
             self.transform = transform
-            self.samples = []
+            self.data_files = []
+            self.labels = []
             self.split = split
             self.split_ratio = split_ratio
-            self._load_dataset(gen_root_dir, train_set_root_dir, epochs_index)
+            self.epochs_index = epochs_index
+            self._load_dataset( gen_root_dir, train_set_root_dir)
 
-        def _load_dataset(self, gen_root_dir, train_set_root_dir, epochs_index):
-                        
-            if self.split == 'train' and epochs_index in range(0,1000):
-                for label in os.listdir(gen_root_dir):
-                    label_dir = os.path.join(gen_root_dir, label)
-                    epoch_dir = os.path.join(label_dir, f'epoch{epochs_index}')
-                    if os.path.exists(epoch_dir):
-                        for img_name in os.listdir(epoch_dir):
-                            self.samples.append((os.path.join(epoch_dir, img_name), int(label.replace('label', ''))))
-            elif self.split == 'test' and  epochs_index in range(0,1000):
+        def _load_dataset(self,  gen_root_dir, train_set_root_dir):
+            epochs = self.epochs_index
+
+            if self.split == 'train' and epochs in range(0,1000):
+                data_path = os.path.join(gen_root_dir, f'all_generated_images_{epoch}.npy')
+                label_path = os.path.join(gen_root_dir, f'all_generated_label_{epoch}.npy')
+                
+                if os.path.exists(data_path) and os.path.exists(label_path):
+                    self.data_files.append(data_path)
+                    self.labels.append(label_path)
+                else:
+                    print(f"Epoch {epoch} data or label file is missing.")
+
+            elif self.split == 'test' and  epochs in range(0,1000):
                 print("No generated images for test set.")
-            elif epochs_index == 'false':
+            elif epochs == 'false':
                 print("No generated images used.")
             else:
                 print("Invalid epochs_index type.")
 
-            temp_samples = []
-            for label in os.listdir(train_set_root_dir):
-                train_label_dir = os.path.join(train_set_root_dir, label)
-                label_samples = [(os.path.join(train_label_dir, img_name), int(label.replace('label', ''))) for img_name in os.listdir(train_label_dir)]
-                random.shuffle(label_samples)
-                split_point = int(len(label_samples) * self.split_ratio)
-                if self.split == 'train':
-                    temp_samples.extend(label_samples[:split_point])
-                else:  
-                    temp_samples.extend(label_samples[split_point:])
+            data_path_train = os.path.join(train_set_root_dir, f'all_images_cf.npy')
+            label_path_train = os.path.join(train_set_root_dir, f'all_labels_cf.npy')
+            
+            if os.path.exists(data_path_train) and os.path.exists(label_path_train):
+                self.data_files.append(data_path_train)
+                self.labels.append(label_path_train)
+            else:
+                print(f"Data or label file is missing.")
 
-            self.samples.extend(temp_samples)
+            split_point = int(len(self.data_files) * self.split_ratio)
+            if self.split == 'train':
+                self.data_files = self.data_files[:split_point]
+                self.labels = self.labels[:split_point]
+            else: 
+                self.data_files = self.data_files[split_point:]
+                self.labels = self.labels[split_point:]
 
-            print(f"Loaded {len(self.samples)} samples.")
+            print(f"Loaded {len(self.data_files)} samples.")
 
         def __len__(self):
-            return len(self.samples)
+            return len(self.data_files)
 
         def __getitem__(self, idx):
-            img_path, label = self.samples[idx]
-            image = Image.open(img_path).convert('RGB')
+            data_path = self.data_files[idx]
+            label_path = self.labels[idx]
+
+            image = np.load(data_path)
+            labels = np.load(label_path)
+            
+            image_tensor = torch.from_numpy(data).float()
+            label_tensor = torch.from_numpy(labels).long() 
+
             if self.transform:
                 image = self.transform(image)
+
             return image, label
+
 
     transform = transforms.Compose([
         transforms.Resize(256),
@@ -159,24 +177,15 @@ def main():
         print("Training accuracy: ", calculate_accuracy(resnet, train_loader), "%")
         print("Test accuracy: ", accuracy, "%")
 
-
-        save_dir = opt.save_dir
-        if save_dir.endswith('/'):
-            save_dir = save_dir[:-1]
-
-        # 提取目录名称
-        save_name = os.path.basename(save_dir)
-
-        if not os.path.exists(f'Acc._{opt.classify_index}', f'{save_name}'):
-            os.makedirs(f'Acc._{opt.classify_index}',f'{save_name}')
-
+        if not os.path.exists(f'Acc._{opt.classify_index}'):
+            os.makedirs(f'Acc._{opt.classify_index}')
 
         if epoch == 0:
-            with open(os.path.join(f'Acc._{opt.classify_index}',f'{save_name}', f'accuracy_epoch{opt.epochs_index}_train{opt.split_ratio}.txt'), 'w') as f:
+            with open(os.path.join(f'Acc._{opt.classify_index}', f'accuracy_epoch{opt.epochs_index}_train{opt.split_ratio}.txt'), 'w') as f:
                 f.write(f'Traing Acc. for epoch{epoch+1} is {calculate_accuracy(resnet, train_loader):.2f}%'+ '\n')
                 f.write(f'Test Acc. for epoch{epoch+1} is {accuracy:.2f}%'+ '\n')
 
-        with open(os.path.join(f'Acc._{opt.classify_index}',f'{save_name}', f'accuracy_epoch{opt.epochs_index}_train{opt.split_ratio}.txt'), 'a') as f:
+        with open(os.path.join(f'Acc._{opt.classify_index}', f'accuracy_epoch{opt.epochs_index}_train{opt.split_ratio}.txt'), 'a') as f:
             f.write(f'Traing Acc. for epoch{epoch+1} is {calculate_accuracy(resnet, train_loader):.2f}%'+ '\n')
             f.write(f'Test Acc. for epoch{epoch+1} is {accuracy:.2f}%'+ '\n')
         
