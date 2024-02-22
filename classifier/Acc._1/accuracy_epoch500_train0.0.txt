@@ -22,3 +22,5 @@ Traing Acc. for epoch10 is 75.31%
 Test Acc. for epoch10 is 20.80%
 Traing Acc. for epoch11 is 79.06%
 Test Acc. for epoch11 is 24.40%
+Traing Acc. for epoch12 is 81.88%
+Test Acc. for epoch12 is 16.70%
