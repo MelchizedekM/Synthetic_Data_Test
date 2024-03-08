@@ -129,6 +129,9 @@ def main():
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(resnet.parameters(), lr=0.001, momentum=0.9)
 
+    recent_train_accs = []  
+
+
     for epoch in range(opt.epochs):
         print(f"Epoch {epoch + 1}/{opt.epochs} begins.")
         start_time = time.time()
@@ -155,10 +158,10 @@ def main():
         test_loader_1000 = DataLoader(subset, batch_size=opt.batch_size, shuffle=False)
 
         accuracy = calculate_accuracy(resnet, test_loader_1000)
+        train_accuracy = calculate_accuracy(resnet, train_loader)
 
-        print("Training accuracy: ", calculate_accuracy(resnet, train_loader), "%")
+        print("Training accuracy: ",train_accuracy , "%")
         print("Test accuracy: ", accuracy, "%")
-
 
         save_dir = opt.save_dir
         if save_dir.endswith('/'):
@@ -167,19 +170,29 @@ def main():
         # 提取目录名称
         save_name = os.path.basename(save_dir)
 
-        if not os.path.exists(f'Acc._{opt.classify_index}', f'{save_name}'):
-            os.makedirs(f'Acc._{opt.classify_index}',f'{save_name}')
+        if not os.path.exists(f'Acc._{opt.classify_index}/{save_name}'):
+            os.makedirs(f'Acc._{opt.classify_index}/{save_name}')
 
 
         if epoch == 0:
-            with open(os.path.join(f'Acc._{opt.classify_index}',f'{save_name}', f'accuracy_epoch{opt.epochs_index}_train{opt.split_ratio}.txt'), 'w') as f:
-                f.write(f'Traing Acc. for epoch{epoch+1} is {calculate_accuracy(resnet, train_loader):.2f}%'+ '\n')
+            with open(os.path.join(f'Acc._{opt.classify_index}/{save_name}', f'accuracy_epoch{opt.epochs_index}_train{opt.split_ratio}_len{len(train_dataset)}.txt'), 'w') as f:
+                f.write(f'Traing Acc. for epoch{epoch+1} is {train_accuracy:.2f}%'+ '\n')
                 f.write(f'Test Acc. for epoch{epoch+1} is {accuracy:.2f}%'+ '\n')
 
-        with open(os.path.join(f'Acc._{opt.classify_index}',f'{save_name}', f'accuracy_epoch{opt.epochs_index}_train{opt.split_ratio}.txt'), 'a') as f:
-            f.write(f'Traing Acc. for epoch{epoch+1} is {calculate_accuracy(resnet, train_loader):.2f}%'+ '\n')
+        with open(os.path.join(f'Acc._{opt.classify_index}/{save_name}', f'accuracy_epoch{opt.epochs_index}_train{opt.split_ratio}_len{len(train_dataset)}.txt'), 'a') as f:
+            f.write(f'Traing Acc. for epoch{epoch+1} is {train_accuracy:.2f}%'+ '\n')
             f.write(f'Test Acc. for epoch{epoch+1} is {accuracy:.2f}%'+ '\n')
         
+
+        recent_train_accs.append(train_accuracy)
+        if len(recent_train_accs) > 3:
+            recent_train_accs.pop(0) 
+
+        if len(recent_train_accs) == 3 and all(abs(recent_train_accs[i] - recent_train_accs[i-1]) < 0.01 for i in range(1, 3)):
+            print("Training accuracy changes are less than 0.01 for the last three epochs. Stopping training.")
+            break
+
+
         progress_bar.close()
 
 if __name__ == "__main__":

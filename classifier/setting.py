@@ -7,6 +7,6 @@ class opt:
     epochs_index = 500 # use generated images from this epoch
     batch_size = 32 # batch size
     num_classes = 10 # number of classes
-    epochs = 30 # training epochs
+    epochs = 100 # training epochs
     classify_index = 1 # classifier{i}.py index
-    split_ratio = 0.00 # train/test split ratio
+    split_ratio = 0.8 # train/test split ratio
